@@ -61,14 +61,14 @@ module hwpe_ctrl_regfile
   logic [7:0] running_job_id;
   logic       running_job_id_incr;
 
-  logic                             regfile_latch_re;
-  logic [SCM_ADDR_WIDTH-1:0]        regfile_latch_rd_addr;
-  logic [SCM_ADDR_WIDTH-1:0]        regfile_latch_wr_addr;
-  logic [31:0]                      regfile_latch_rdata;
-  logic                             regfile_latch_we;
-  logic [31:0]                      regfile_latch_wdata;
-  logic [3:0]                       regfile_latch_be;
-  logic [N_SCM_REGISTERS-1:0][31:0] regfile_latch_mem;
+  logic                             regfile_register_re;
+  logic [SCM_ADDR_WIDTH-1:0]        regfile_register_rd_addr;
+  logic [SCM_ADDR_WIDTH-1:0]        regfile_register_wr_addr;
+  logic [31:0]                      regfile_register_rdata;
+  logic                             regfile_register_we;
+  logic [31:0]                      regfile_register_wdata;
+  logic [3:0]                       regfile_register_be;
+  logic [N_SCM_REGISTERS-1:0][31:0] regfile_register_mem;
 
   logic [1:0] r_finished_cnt;
   logic r_was_testset;
@@ -99,37 +99,29 @@ module hwpe_ctrl_regfile
   generate
     logic [N_CONTEXT-1:0]                  wren_cxt;
 
-    hwpe_ctrl_regfile_latch_test_wrap #(
+    hwpe_ctrl_regfile_register #(
       .ADDR_WIDTH(SCM_ADDR_WIDTH),
       .DATA_WIDTH(32)
-    ) i_regfile_latch (
+    ) i_regfile_register (
       .clk        ( clk_i                           ),
       .rst_n      ( rst_ni                          ),
       .clear      ( clear_i | r_clear_first_startup ),
-      .ReadEnable ( regfile_latch_re                ),
-      .ReadAddr   ( regfile_latch_rd_addr           ),
-      .ReadData   ( regfile_latch_rdata             ),
+      .ReadEnable ( regfile_register_re                ),
+      .ReadAddr   ( regfile_register_rd_addr           ),
+      .ReadData   ( regfile_register_rdata             ),
 
-      .WriteAddr  ( regfile_latch_wr_addr           ),
-      .WriteEnable( regfile_latch_we                ),
-      .WriteData  ( regfile_latch_wdata             ),
-      .WriteBE    ( regfile_latch_be                ),
-      .MemContent ( regfile_latch_mem               ),
-
-      .BIST       ( 1'b0                            ),
-      .CSN_T      (                                 ),
-      .WEN_T      (                                 ),
-      .A_T        (                                 ),
-      .D_T        (                                 ),
-      .BE_T       (                                 ),
-      .Q_T        (                                 )
+      .WriteAddr  ( regfile_register_wr_addr           ),
+      .WriteEnable( regfile_register_we                ),
+      .WriteData  ( regfile_register_wdata             ),
+      .WriteBE    ( regfile_register_be                ),
+      .MemContent ( regfile_register_mem               )
     );
 
     for(i=0; i<N_CONTEXT; i++)
     begin
 
       for(j=N_MANDATORY_REGS+N_RESERVED_REGS+N_MAX_GENERIC_REGS; j<N_MANDATORY_REGS+N_RESERVED_REGS+N_MAX_GENERIC_REGS+N_IO_REGS; j++) begin
-        assign regfile_mem[i][j] = regfile_latch_mem[i*N_IO_REGS+j-N_RESERVED_REGS-N_MAX_GENERIC_REGS+N_GENERIC_REGS-N_MANDATORY_REGS];
+        assign regfile_mem[i][j] = regfile_register_mem[i*N_IO_REGS+j-N_RESERVED_REGS-N_MAX_GENERIC_REGS+N_GENERIC_REGS-N_MANDATORY_REGS];
       end
 
     end
@@ -153,22 +145,22 @@ module hwpe_ctrl_regfile
           regfile_mem_mandatory_dout <= 32'hdeadbeef;
       end
     end
-    assign regfile_mem_dout = (~r_was_mandatory) ? regfile_latch_rdata : regfile_mem_mandatory_dout;
-    assign regfile_latch_re = flags_i.is_read;
-    assign regfile_latch_we = (~flags_i.is_mandatory) & regfile_in_i.wren;
+    assign regfile_mem_dout = (~r_was_mandatory) ? regfile_register_rdata : regfile_mem_mandatory_dout;
+    assign regfile_register_re = flags_i.is_read;
+    assign regfile_register_we = (~flags_i.is_mandatory) & regfile_in_i.wren;
     always_comb
-    begin : regfile_latch_addr_proc
+    begin : regfile_register_addr_proc
       if(flags_i.is_contexted == 1'b1) begin
-        regfile_latch_rd_addr = regfile_in_i.addr[LOG_REGS-1:0] + regfile_in_i.addr[LOG_REGS_MC-1:LOG_REGS]*N_IO_REGS - N_RESERVED_REGS - N_MAX_GENERIC_REGS + N_GENERIC_REGS - N_MANDATORY_REGS; // one mul x const + one add + one add with const
-        regfile_latch_wr_addr = regfile_in_i.addr[LOG_REGS-1:0] + regfile_in_i.addr[LOG_REGS_MC-1:LOG_REGS]*N_IO_REGS - N_RESERVED_REGS - N_MAX_GENERIC_REGS + N_GENERIC_REGS - N_MANDATORY_REGS; // one mul x const + one add + one add with const
+        regfile_register_rd_addr = regfile_in_i.addr[LOG_REGS-1:0] + regfile_in_i.addr[LOG_REGS_MC-1:LOG_REGS]*N_IO_REGS - N_RESERVED_REGS - N_MAX_GENERIC_REGS + N_GENERIC_REGS - N_MANDATORY_REGS; // one mul x const + one add + one add with const
+        regfile_register_wr_addr = regfile_in_i.addr[LOG_REGS-1:0] + regfile_in_i.addr[LOG_REGS_MC-1:LOG_REGS]*N_IO_REGS - N_RESERVED_REGS - N_MAX_GENERIC_REGS + N_GENERIC_REGS - N_MANDATORY_REGS; // one mul x const + one add + one add with const
       end
       else begin
-        regfile_latch_rd_addr = regfile_in_i.addr[LOG_REGS-1:0] - N_RESERVED_REGS - N_MANDATORY_REGS;
-        regfile_latch_wr_addr = regfile_in_i.addr[LOG_REGS-1:0] - N_RESERVED_REGS - N_MANDATORY_REGS;
+        regfile_register_rd_addr = regfile_in_i.addr[LOG_REGS-1:0] - N_RESERVED_REGS - N_MANDATORY_REGS;
+        regfile_register_wr_addr = regfile_in_i.addr[LOG_REGS-1:0] - N_RESERVED_REGS - N_MANDATORY_REGS;
       end
     end
-    assign regfile_latch_be    = regfile_in_i.be;
-    assign regfile_latch_wdata = regfile_in_i.wdata;
+    assign regfile_register_be    = regfile_in_i.be;
+    assign regfile_register_wdata = regfile_in_i.wdata;
   endgenerate
 
   // Unique job id counters
@@ -257,7 +249,7 @@ module hwpe_ctrl_regfile
 
     // Write generic registers processes
     for(i=N_MANDATORY_REGS+N_RESERVED_REGS; i<N_MANDATORY_REGS+N_RESERVED_REGS+N_GENERIC_REGS; i++) begin
-      assign regfile_mem_generic[i] = regfile_latch_mem[i-N_RESERVED_REGS-N_MANDATORY_REGS];
+      assign regfile_mem_generic[i] = regfile_register_mem[i-N_RESERVED_REGS-N_MANDATORY_REGS];
     end
 
   endgenerate
