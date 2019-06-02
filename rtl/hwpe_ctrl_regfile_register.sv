@@ -77,13 +77,15 @@ end
 //-----------------------------------------------------------------------------
 //-- WRITE : Write operation
 //-----------------------------------------------------------------------------  
-always_ff @(posedge clk)
+always_ff @(posedge clk, negedge rst_n)
 begin : register_wdata
     for(k=0; k<NUM_WORDS; k++)
     begin : w_WordIter
         for(l=0; l<NUM_BYTE; l++)
         begin : w_ByteIter
-            if(clear)
+            if(~rst_n)
+                MemContentxDP[k][l] = 8'b0;
+            else if(clear)
                 MemContentxDP[k][l] = 8'b0;
             else if(WAddrOneHotxD[k][l])
                 MemContentxDP[k][l] = WriteData[l];
