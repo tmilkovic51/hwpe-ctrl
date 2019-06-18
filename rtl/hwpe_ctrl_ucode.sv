@@ -156,8 +156,9 @@ module hwpe_ctrl_ucode
     done_int  = 1'b0;
     busy_int  = 1'b0;
     exec_int  = 1'b0;
+`ifndef SYNTHESIS
     str_enum  = NULL;
-
+`endif
     // if next operation is within the current loop, update address
     if((curr_idx[curr_loop] < ucode_i.range[curr_loop] - 1) && (curr_op < ucode_i.loops[curr_loop].nb_ops - 1)) begin
 `ifndef SYNTHESIS
